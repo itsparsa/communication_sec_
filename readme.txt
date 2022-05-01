@@ -1,1 +1,0 @@
-just create a shourtcout of https://drive.google.com/drive/folders/1HoC1SENfNZXrQ7VL7uRFQkZ_yPJXRbcE?usp=sharing in your google drive and address it in the code so the code can find its resources to generate data
