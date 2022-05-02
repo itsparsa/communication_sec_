@@ -4,7 +4,7 @@ import math
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
+from copy  
 from easydict import EasyDict
 from tensorflow.keras import Model
 from tensorflow.keras.layers import AveragePooling2D, Conv2D
@@ -87,7 +87,6 @@ class Attack_handler:
         print("getting clean data from model")
         
         # Evaluate on clean and adversarial data
-        print(data.test[0][1,:].shape)
         # print(data.test[1][0,0:2])
         # print(model(data.test[0][0,0:2]))
 
@@ -112,20 +111,20 @@ class Attack_handler:
         print(a.name)    
 
         print(
-            "test acc on clean examples (%): {:.3f}".format(test_acc.result() * 100)
+            "test acc on clean examples {} : {:.3f}".format(a.loss.name,test_acc.result())
         )
         print(
-            "test acc on FGM adversarial examples (%): {:.3f}".format(
-                test_acc_fgsm.result() * 100
+            "test acc on FGM adversarial examples {}: {:.3f}".format(a.loss.name,
+                test_acc_fgsm.result()
             )
         )
         print(
-            "test acc on PGD adversarial examples (%): {:.3f}".format(
-                test_acc_pgd.result() * 100
+            "test acc on PGD adversarial examples {} : {:.3f}".format(a.loss.name,
+                test_acc_pgd.result()
             )
         )
-
-        return dict(acc = test_acc.result(),acc_FGM = test_acc_fgsm.result(),acc_pdg = test_acc_pgd.result())
+        info = vars(a)
+        return dict(acc = test_acc.result(),acc_FGM = test_acc_fgsm.result(),acc_pdg = test_acc_pgd.result(),info)
 
 
 
