@@ -30,6 +30,9 @@ class Deep_MIMO(GM):
           if i < 1 : continue
           setattr(self,key,value)
       self.name ="deepmimo"
+      self.metric = tf.keras.metrics.MeanAbsoluteError()
+      self.loss = tf.keras.losses.MeanSquaredError()
+      self.loss_get_clean = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
 
    
    def build_model_and_get_data(self):
@@ -40,7 +43,6 @@ class Deep_MIMO(GM):
       if self.MLP_DroupOut : self.model = self.MLP_with_dropouts (input_shape , output_shape)
       else : self.model = self.MLP( input_shape , output_shape)
       self.compile_model (self.model, self.MSE_loss )
-      
       return self.model
    
    

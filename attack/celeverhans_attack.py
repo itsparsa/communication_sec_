@@ -25,77 +25,89 @@ class Attack_handler:
       self.start_attack(a,FLAGS,self.batch,clean_limit)
 
 
+    
     @staticmethod
-    def start_attack(a , FLAGS = {"nb_epochs": 1,"eps": 0.05,"adv_train": False} ,batch = 128,clean_limit =100):
+    def start_attack(a , FLAGS = {"nb_epochs": 1,"eps": 0.05,"adv_train": False} ,batch = 128,limit =100):
+
         lim = int(a.X_train.shape[0]/128)
         train = [t[:lim*batch].reshape(lim,batch,*t.shape[1:]) for t in [a.X_train,a.y_train]]
-
-        def get_clean_data(a,limit):
-              pred = a.model.predict(a.X_train)
-              diff = np.mean(np.abs(pred - a.y_train),axis=-1)
-              for i in range (len(a.y_train.shape)-2):
-                  diff = np.mean(diff,axis=-1)
-              best_answer_index = np.argsort(diff)
-              return [a.X_train[best_answer_index][:limit] , a.y_train[best_answer_index][:limit]]
-        
-        print("getting clean data from model")
-        clean = get_clean_data(a,clean_limit)
-        lim = int(clean[0].shape[0]/128)
-        test = [t[:lim*batch].reshape(lim,batch,*t.shape[1:]) for t in clean]
-        data = EasyDict(train=train, test=test)
-        print(data.train[0].shape)
-        print(data.test[0].shape)
+        #train = [a.X_train[:100],a.y_train[:100]]
         # Load training and test data
         model = a.model
-        loss_object =tf.keras.losses.MeanSquaredError()
+        loss_object =tf.keras.losses.CategoricalCrossentropy()
         optimizer = tf.optimizers.Adam(learning_rate=0.001)
 
         # Metrics to track the different accuracies.
         train_loss = tf.metrics.Mean(name="train_loss")
-        test_acc = tf.keras.metrics.CategoricalAccuracy()
-        test_acc_fgsm = tf.keras.metrics.CategoricalAccuracy()
-        test_acc_pgd = tf.keras.metrics.CategoricalAccuracy()
+        test_acc = tf.keras.metrics.Mean()
+        test_acc_fgsm = tf.keras.metrics.Mean()
+        test_acc_pgd = tf.keras.metrics.Mean()
+        
+        
+
+
+        clean = a.get_clean_data(limit)
+        lim = int(clean[0].shape[0]/128)
+        test = [t[:lim*batch].reshape(lim,batch,*t.shape[1:]) for t in clean]
+        #test = clean
+        data = EasyDict(train=train, test=test)
+
+        print(" data train [0]",data.train[0].shape)
+        print(" data train [1]",data.train[1].shape)
 
         @tf.function
         def train_step(x, y):
             with tf.GradientTape() as tape:
-                predictions = a.model(x)
+                predictions = model(x)
                 loss = loss_object(y, predictions)
-            gradients = tape.gradient(loss, a.model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, a.model.trainable_variables))
+            gradients = tape.gradient(loss, model.trainable_variables)
+            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
             train_loss(loss)
 
         print("Train model with adversarial training")
+        
+        print(data.test[1][0].shape)
+        #print(model(data.train[0][0]))
         # Train model with adversarial training
         for epoch in range(FLAGS["nb_epochs"]):
             # keras like display of progress
             progress_bar_train = tf.keras.utils.Progbar(50000)
             for i in range(data.train[0].shape[0]):
+                x = data.train[0][i]
+                y = data.train[1][i]
                 if FLAGS['adv_train']:
                     # Replace clean example with adversarial example for adversarial training
-                    x = projected_gradient_descent(model, data.train[0][i,:], FLAGS['eps'], 0.01, 40, np.inf)
-                train_step(data.train[0][i,:], data.train[1][i,:])
-                progress_bar_train.add(data.train[0][i,:].shape[0], values=[("loss", train_loss.result())])
+                    x = projected_gradient_descent(model, x, FLAGS['eps'], 0.01, 40, np.inf,y=y)
+                train_step(x,y)
+                progress_bar_train.add(x.shape[0], values=[("loss", train_loss.result())])
 
-        print("\nEvaluate on clean and adversarial data")
-
+        print("Evaluate on clean and adversarial data")
+        print("getting clean data from model")
         
         # Evaluate on clean and adversarial data
+        print(data.test[0][1,:].shape)
+        # print(data.test[1][0,0:2])
+        # print(model(data.test[0][0,0:2]))
 
-        progress_bar_test = tf.keras.utils.Progbar(10000)
+        print(tf.nn.softmax_cross_entropy_with_logits(labels = data.test[1][0,:],logits=model(data.test[0][0,:])))
+
+        
+        progress_bar_test = tf.keras.utils.Progbar(50000)
         for i in range(data.test[0].shape[0]):
-            y_pred = model(data.test[0][i,:])
-            test_acc(data.test[1][i,:], y_pred)
-
-            x_fgm = fast_gradient_method(model, data.test[0][i,:], FLAGS['eps'], np.inf)
+            x = data.test[0][i,:]
+            y = data.test[1][i,:]
+            y_pred = model(x)
+            print(y.shape,y_pred.shape)
+            test_acc(y, y_pred)
+            x_fgm = fast_gradient_method(model, x, FLAGS['eps'], np.inf,loss_fn=tf.nn.softmax_cross_entropy_with_logits, y=y,)
             y_pred_fgm = model(x_fgm)
-            test_acc_fgsm(data.test[1][i,:], y_pred_fgm)
+            test_acc_fgsm(y, y_pred_fgm)
 
-            x_pgd = projected_gradient_descent(model, data.test[0][i,:], FLAGS['eps'], 0.01, 40, np.inf)
+            x_pgd = projected_gradient_descent(model, x,FLAGS['eps'], 0.01, 40, np.inf,loss_fn=tf.nn.softmax_cross_entropy_with_logits, y=y )
             y_pred_pgd = model(x_pgd)
-            test_acc_pgd(data.test[1][i,:], y_pred_pgd)
+            test_acc_pgd(y, y_pred_pgd)
 
-            progress_bar_test.add(data.test[0][i,:].shape[0])
+            progress_bar_test.add(x.shape[0])
         
         print(a.name)    
 
@@ -113,9 +125,12 @@ class Attack_handler:
             )
         )
 
-        return dict(acc = test_acc.result()*100,
-                    acc_FGM = test_acc_fgsm.result()*100,
-                    acc_pdg = test_acc_pgd.result()*100)
+        return dict(acc = test_acc.result(),acc_FGM = test_acc_fgsm.result(),acc_pdg = test_acc_pgd.result())
+
+
+
+
+
 
 
 

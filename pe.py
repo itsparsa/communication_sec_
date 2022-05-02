@@ -25,6 +25,8 @@ class PE(GM):
       super(PE, self).__init__(data_path)
       self.name = 'pe'
       self.train_snr = train_snr
+      self.loss = tf.keras.losses.MeanSquaredError
+      
 
 
    def build_model_and_get_data(self):

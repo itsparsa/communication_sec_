@@ -3,6 +3,8 @@ from keras.models import Model
 import numpy as np
 import os
 import tensorflow as tf
+import keras.backend as k
+
 
 class Designed_model():
    def __init__(self,data_path) :
@@ -13,9 +15,12 @@ class Designed_model():
       self.y_test = None
       self.model = None 
       self.name = None
+      self.loss = None
+      self.loss_get_clean = None
+      self.metric = None 
 
    def build_model_and_get_data(self):
-      pass
+     pass
    
    def get_data(self):
       pass
@@ -28,6 +33,7 @@ class Designed_model():
       del self.y_train
       del self.X_test
       del self.y_test 
+
    
    def train_gpu(self,epochs = 200 , batch_size=1024 , get_data_build =True): 
        with tf.device(tf.test.gpu_device_name()):
@@ -36,12 +42,20 @@ class Designed_model():
    def train(self, epochs =20,batch_size=1024 , get_data_build =True):
       if get_data_build : self.build_model_and_get_data()
       history = self.model.fit(self.X_train,self.y_train,
-              validation_data=(self.X_test, self.y_test),
+                            validation_data=(self.X_test, self.y_test),
                             epochs=epochs, batch_size = batch_size, verbose=2 )
       
-      return history       
-   
-  
+      return history   
+
+
+   def get_clean_data(a,limit):
+              pred = a.model(a.X_train)
+              diff = self.loss_get_clean(pred,a.X_train).numpy()
+              best_answer_index = np.argsort(diff)
+              return [a.X_train[best_answer_index][:limit] , a.y_train[best_answer_index][:limit]] 
+
+
+
    def save(self,data_path):
      path = data_path + '/' +self.name
      i = 0 
@@ -50,7 +64,6 @@ class Designed_model():
        i+=1
      os.mkdir(path) 
      self.model.save_weights(path + '/' +'myModel.h5')
- 
      np.savez_compressed( path + '/train_shape', X_train_shape= np.array(self.X_train.shape) , y_train_shape = np.array(self.y_train.shape))
      print("train data shape saved")
      np.savez_compressed( path + '/train', X_train= self.X_train.reshape(-1,1), y_train = self.y_train.reshape(-1,1))

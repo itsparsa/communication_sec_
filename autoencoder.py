@@ -18,6 +18,9 @@ class aphl(GM):
       super().__init__(data_path)
       self.name ='aphl'
       self.num_train_limit = num_train_limit
+      self.metric = tf.keras.metrics.CategoricalCrossentropy()
+      self.loss = tf.keras.losses.CategoricalCrossentropy()
+      self.loss_get_clean = tf.keras.losses.CategoricalCrossentropy(reduction=losses_utils.ReductionV2.NONE)
    
    def build_model_and_get_data(self):
       if type(self.X_train) == type(None) : self.set_data(limit=self.num_train_limit) 
@@ -26,9 +29,7 @@ class aphl(GM):
          self.y_train[0].shape[0])
       self.compile_model(self.model)
       return 
-   
-
-   
+  
    
    def set_data(self , limit = None) -> None:
       ##read from directory
@@ -81,7 +82,7 @@ class aphl(GM):
       self.X_train , self.y_train, self.X_test, self.y_test = X_train ,y_train, X_test,y_test
    
    @staticmethod
-   def compile_model(model):
+   def compile_model(model,loss=tf.keras.losses.CategoricalCrossentropy()):
       model.compile(
                     optimizer=keras.optimizers.Adam(learning_rate=0.001),
                     loss= tf.keras.losses.CategoricalCrossentropy(),
