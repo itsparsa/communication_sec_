@@ -39,6 +39,9 @@ class MIST(GM):
           if i < 1 : continue
           setattr(self,key,value)
       self.name = "mist"
+      self.loss = tf.keras.losses.MeanSquaredError()
+      self.loss_get_clean = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+      self.metric = self.ber
 
    def build_model(self):
       self.model = self.MIST_model(input_shape=(self.N,1),output_shape=(self.k)) 

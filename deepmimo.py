@@ -24,7 +24,7 @@ class Deep_MIMO(GM):
                                 subcarriers_limit = 32,
                                 num_paths = 1,
                                 num_set_antenna_M = 8,
-                                MLP_DroupOut = True):
+                                MLP_DroupOut = 0.1):
       super(Deep_MIMO, self).__init__(data_path)
       for i,(key,value) in enumerate(locals().items()):
           if i < 1 : continue
@@ -39,13 +39,11 @@ class Deep_MIMO(GM):
       if type (self.X_train) == type(None): self.set_data() 
       input_shape = self.X_train[0].shape
       output_shape = self.y_train[0].shape
-
-      if self.MLP_DroupOut : self.model = self.MLP_with_dropouts (input_shape , output_shape)
-      else : self.model = self.MLP( input_shape , output_shape)
-      self.compile_model (self.model, self.MSE_loss )
+      self.model = self.MLP_with_dropouts (input_shape , output_shape,dropout_rate= self.MLP_DroupOut)
+      self.compile_model ()
       return self.model
    
-   
+    
    
    def set_data(self , limit = None) -> None:
 
@@ -82,13 +80,7 @@ class Deep_MIMO(GM):
 
 
    
-   def compile_model(self, model, func ):
-      model.compile(
-                      optimizer=keras.optimizers.Adam(learning_rate=0.001),
-                      loss= func,
-                      metrics=["accuracy"],
-                  )  
-      return model
+   
 
    
    @staticmethod
@@ -199,7 +191,26 @@ class Deep_MIMO(GM):
    def MSE_loss (y_true , y_pred):
     return K.mean(K.square(y_pred-y_true))
 
-  
+   def loss_get_clean_data_sp(self,y_true,y_pred):
+              y_pred = K.reshape(y_pred,shape = (y_pred.shape[0],-1))
+              y_true = K.reshape(y_true,shape = (y_pred.shape[0],-1))
+              return self.loss_get_clean(y_true,y_pred)
+      
+   #overwrite beacasue of the special dimention it has 
+   def get_clean_data(self,limit):
+              y_pred = self.model(self.X_train)
+              y_true = self.y_train
+              diff = self.loss_get_clean_data_sp(y_true,y_pred)
+              diff = diff.numpy()
+              best_answer_index = np.argsort(diff)
+              return [self.X_train[best_answer_index][:limit] , self.y_train[best_answer_index][:limit]]
+
+   def create_loss_fn(self):
+     temp = self.loss_get_clean_data_sp
+     def loss_fn(labels,logits):
+          return temp(labels,logits)
+     return loss_fn
+
    def get_MIMO_data(self,scenario ) :
 
      # Load the default parameters

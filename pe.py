@@ -25,8 +25,9 @@ class PE(GM):
       super(PE, self).__init__(data_path)
       self.name = 'pe'
       self.train_snr = train_snr
-      self.loss = tf.keras.losses.MeanSquaredError
-      
+      self.loss = tf.keras.losses.MeanSquaredError()
+      self.loss_get_clean = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+      self.metric = self.ber
 
 
    def build_model_and_get_data(self):
@@ -34,7 +35,7 @@ class PE(GM):
       self.model = self.RNN_model ( self.X_train[0].shape, 
                                     self.y_train[0].shape[0])
       
-      self.compile_model(self.model)
+      self.compile_model()
       return 
    
   
@@ -105,34 +106,7 @@ class PE(GM):
       self.X_test , self.y_test = self.X_test.reshape(-1,X_test_shape[-1]) , self.y_test.reshape(-1,y_test_shape[-1])
       self.norm ()
    
-   
-   @staticmethod
-   def transform(x,mean,scale):
-     return (x-mean)/scale
 
-   @staticmethod
-   def mean_data(data):
-      mean = np.mean(data,axis=0)
-      for i in range(1,len(data.shape)-2):
-        mean = np.mean(mean,axis=0)   
-      return mean
-
-   @staticmethod 
-   def scale(data):
-      max = np.max(np.abs(data))
-      return max 
-
-
-
-   @staticmethod
-   def compile_model(model):
-      model.compile(
-                    optimizer=keras.optimizers.Adam(learning_rate=0.001),
-                    loss= tf.keras.losses.MeanSquaredError(),
-                    metrics=["accuracy"],
-                )
-      return model
-   
 
    @staticmethod
    def RNN_model (input_shape,output_shape, Dropout_rate = 0.1) :

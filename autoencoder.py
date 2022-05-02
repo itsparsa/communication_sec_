@@ -20,14 +20,14 @@ class aphl(GM):
       self.num_train_limit = num_train_limit
       self.metric = tf.keras.metrics.CategoricalCrossentropy()
       self.loss = tf.keras.losses.CategoricalCrossentropy()
-      self.loss_get_clean = tf.keras.losses.CategoricalCrossentropy(reduction=losses_utils.ReductionV2.NONE)
+      self.loss_get_clean = tf.keras.losses.CategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
    
    def build_model_and_get_data(self):
       if type(self.X_train) == type(None) : self.set_data(limit=self.num_train_limit) 
       self.model = self.CNN_model_article(
          self.X_train[0].shape, 
          self.y_train[0].shape[0])
-      self.compile_model(self.model)
+      self.compile_model()
       return 
   
    
@@ -81,14 +81,6 @@ class aphl(GM):
 
       self.X_train , self.y_train, self.X_test, self.y_test = X_train ,y_train, X_test,y_test
    
-   @staticmethod
-   def compile_model(model,loss=tf.keras.losses.CategoricalCrossentropy()):
-      model.compile(
-                    optimizer=keras.optimizers.Adam(learning_rate=0.001),
-                    loss= tf.keras.losses.CategoricalCrossentropy(),
-                    metrics=["accuracy"],
-                )  
-      return model
    
    @staticmethod
    def mods_to_one_hot (mods,inp,encoded):
@@ -103,22 +95,7 @@ class aphl(GM):
       array_form_of_complex = np.concatenate((real_num,imag_num),axis=len(shape))
       return array_form_of_complex 
 
-   @staticmethod
-   def transform(x,mean,scale):
-     return (x-mean)/scale
 
-
-   @staticmethod 
-   def mean_data(data):
-    for i in range(len(data.shape)-2):
-        if i == 0 : mean = np.mean(data,axis=0)
-        mean = np.mean(mean,axis=0)   
-    return mean
-    
-   @staticmethod 
-   def scale(data):
-    max = np.max(np.abs(data))
-    return  max 
 
    
    @staticmethod

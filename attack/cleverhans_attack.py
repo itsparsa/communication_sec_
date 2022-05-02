@@ -33,17 +33,18 @@ class Attack_handler:
         train = [t[:lim*batch].reshape(lim,batch,*t.shape[1:]) for t in [a.X_train,a.y_train]]
         #train = [a.X_train[:100],a.y_train[:100]]
         # Load training and test data
+        
         model = a.model
-        loss_object =tf.keras.losses.CategoricalCrossentropy()
+        loss_object = tf.keras.losses.CategoricalCrossentropy()
         optimizer = tf.optimizers.Adam(learning_rate=0.001)
 
         # Metrics to track the different accuracies.
         train_loss = tf.metrics.Mean(name="train_loss")
-        test_acc = tf.keras.metrics.Mean()
-        test_acc_fgsm = tf.keras.metrics.Mean()
-        test_acc_pgd = tf.keras.metrics.Mean()
+        test_acc = a.metric
+        test_acc_fgsm = a.metric
+        test_acc_pgd = a.metric
         
-        
+        loss_fn = a.loss_fn
 
 
         clean = a.get_clean_data(limit)
@@ -54,6 +55,8 @@ class Attack_handler:
 
         print(" data train [0]",data.train[0].shape)
         print(" data train [1]",data.train[1].shape)
+        print(" data test [0]",data.test[0].shape)
+        print(" data test [1]",data.test[1].shape)
 
         @tf.function
         def train_step(x, y):
@@ -66,7 +69,6 @@ class Attack_handler:
 
         print("Train model with adversarial training")
         
-        print(data.test[1][0].shape)
         #print(model(data.train[0][0]))
         # Train model with adversarial training
         for epoch in range(FLAGS["nb_epochs"]):
@@ -77,7 +79,7 @@ class Attack_handler:
                 y = data.train[1][i]
                 if FLAGS['adv_train']:
                     # Replace clean example with adversarial example for adversarial training
-                    x = projected_gradient_descent(model, x, FLAGS['eps'], 0.01, 40, np.inf,y=y)
+                    x = projected_gradient_descent(model, x, FLAGS['eps'], 0.01, 40, np.inf,loss_fn=loss_fn,y=y)
                 train_step(x,y)
                 progress_bar_train.add(x.shape[0], values=[("loss", train_loss.result())])
 
@@ -89,8 +91,6 @@ class Attack_handler:
         # print(data.test[1][0,0:2])
         # print(model(data.test[0][0,0:2]))
 
-        print(tf.nn.softmax_cross_entropy_with_logits(labels = data.test[1][0,:],logits=model(data.test[0][0,:])))
-
         
         progress_bar_test = tf.keras.utils.Progbar(50000)
         for i in range(data.test[0].shape[0]):
@@ -99,11 +99,11 @@ class Attack_handler:
             y_pred = model(x)
             print(y.shape,y_pred.shape)
             test_acc(y, y_pred)
-            x_fgm = fast_gradient_method(model, x, FLAGS['eps'], np.inf,loss_fn=tf.nn.softmax_cross_entropy_with_logits, y=y,)
+            x_fgm = fast_gradient_method(model, x, FLAGS['eps'], np.inf,loss_fn=loss_fn, y=y,)
             y_pred_fgm = model(x_fgm)
             test_acc_fgsm(y, y_pred_fgm)
 
-            x_pgd = projected_gradient_descent(model, x,FLAGS['eps'], 0.01, 40, np.inf,loss_fn=tf.nn.softmax_cross_entropy_with_logits, y=y )
+            x_pgd = projected_gradient_descent(model, x,FLAGS['eps'], 0.01, 40, np.inf,loss_fn=loss_fn, y=y )
             y_pred_pgd = model(x_pgd)
             test_acc_pgd(y, y_pred_pgd)
 

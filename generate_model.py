@@ -18,6 +18,8 @@ class Designed_model():
       self.loss = None
       self.loss_get_clean = None
       self.metric = None 
+      self.opt = tf.keras.optimizers.Adam(learning_rate=0.001)
+      self.loss_fn = self.create_loss_fn()
 
    def build_model_and_get_data(self):
      pass
@@ -48,11 +50,25 @@ class Designed_model():
       return history   
 
 
-   def get_clean_data(a,limit):
-              pred = a.model(a.X_train)
-              diff = self.loss_get_clean(pred,a.X_train).numpy()
+   def get_clean_data(self,limit):
+              pred = self.model(self.X_train)
+              diff = self.loss_get_clean(self.y_train,pred).numpy()
               best_answer_index = np.argsort(diff)
-              return [a.X_train[best_answer_index][:limit] , a.y_train[best_answer_index][:limit]] 
+              return [self.X_train[best_answer_index][:limit] , self.y_train[best_answer_index][:limit]] 
+   
+   def create_loss_fn(self):
+     temp = self.loss_get_clean
+     def loss_fn(labels,logits):
+          return temp(labels,logits)
+     return loss_fn
+
+   def compile_model(self):
+      self.model.compile(
+                          optimizer=self.opt,
+                          loss= self.loss,
+                          metrics=self.metric,
+                      )  
+      return self.model
 
 
 
@@ -84,14 +100,15 @@ class Designed_model():
       X_train_shape , y_train_shape = loaded_shape["X_train_shape"] , loaded_shape["y_train_shape"] 
       new_model.X_train , new_model.y_train = loaded["X_train"].reshape(X_train_shape) , loaded["y_train"].reshape(y_train_shape)
       del loaded
-
       if a.name is not 'mist':
         loaded = np.load(path + '/test.npz')
         loaded_shape = np.load( path + '/test_shape.npz')
         X_test_shape , y_test_shape = loaded_shape["X_test_shape"] , loaded_shape["y_test_shape"] 
         new_model.X_test , new_model.y_test = loaded["X_test"].reshape(X_test_shape) , loaded["y_test"].reshape(y_test_shape)
    
-
+   @staticmethod
+   def ber(y_true, y_pred):
+      return  k.mean(k.cast(k.not_equal(y_true, k.round(y_pred)),dtype='float32'))
 
    def eval(self):
      self.model.evaluate(self.X_test,self.y_test)
