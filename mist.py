@@ -132,7 +132,8 @@ class MIST(GM):
             self.y_train[i,ii,:,:] = uncoded
             x_train = np.expand_dims(noisy_signal,axis=2)
             history.append( self.model.fit(x_train,uncoded, epochs = 1, batch_size = self.train_batch , verbose=2))
-
+     self.X_train = self.X_train.reshape(-1,self.N,1)
+     self.y_train = self.y_train.reshape(-1,self.k)
      return history 
 
    def compile_model(self, optimizer = 'adam',loss = 'mse' ):            

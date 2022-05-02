@@ -4,11 +4,10 @@ import math
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from copy  
 from easydict import EasyDict
 from tensorflow.keras import Model
 from tensorflow.keras.layers import AveragePooling2D, Conv2D
-
+from copy import deepcopy
 from cleverhans.tf2.attacks.projected_gradient_descent import projected_gradient_descent
 from cleverhans.tf2.attacks.fast_gradient_method import fast_gradient_method
 
@@ -33,16 +32,20 @@ class Attack_handler:
         train = [t[:lim*batch].reshape(lim,batch,*t.shape[1:]) for t in [a.X_train,a.y_train]]
         #train = [a.X_train[:100],a.y_train[:100]]
         # Load training and test data
+        model_copy= keras.models.clone_model(a.model1)
+        model_copy.build(a.X_train[0]) # replace 10 with number of variables in input layer
+        model_copy.compile(optimizer= a.opt, loss=a.loss)
+        model_copy.set_weights(a.model.get_weights())
         
-        model = a.model
+        model = model_copy
         loss_object = tf.keras.losses.CategoricalCrossentropy()
         optimizer = tf.optimizers.Adam(learning_rate=0.001)
 
         # Metrics to track the different accuracies.
         train_loss = tf.metrics.Mean(name="train_loss")
-        test_acc = a.metric
-        test_acc_fgsm = a.metric
-        test_acc_pgd = a.metric
+        test_acc = deepcopy(a.metric)
+        test_acc_fgsm = deepcopy(a.metric)
+        test_acc_pgd = deepcopy(a.metric)
         
         loss_fn = a.loss_fn
 
@@ -124,7 +127,7 @@ class Attack_handler:
             )
         )
         info = vars(a)
-        return dict(acc = test_acc.result(),acc_FGM = test_acc_fgsm.result(),acc_pdg = test_acc_pgd.result(),info)
+        return dict(acc = test_acc.result(),acc_FGM = test_acc_fgsm.result(),acc_pdg = test_acc_pgd.result(),Network=info)
 
 
 

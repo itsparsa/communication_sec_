@@ -118,52 +118,30 @@ class aphl(GM):
     dense_4 = Dense(output_shape, activation='softmax')(dense_3)
 
     return Model(inputs = input_signal, outputs = dense_4)  
-
-  @staticmethod
-  def CNN_Class( kernels = [128,64],sizes=[(2,8),(1,6)],denses=[128,64,42] ,output_shape=11):
-
-    class CNN(Model):
-      def __init__(self):
-        super(CNN,self).__init__:
-
-        self.obj_layer = []
-        reshap = Reshape((2,128,1))
-        
-        self.obj_layer.append(reshap)
-        for k,s in zip(kernels,sizes):
-            conv = Conv2D(k , kernel_size = s , activation='relu' )
-            max_pool = MaxPooling2D (pool_size=(1,2), strides = 2,data_format ='channels_last')
-            self.obj_layer.append(conv)
-            self.obj_layer.append(max_pool)
-
-        for d in denses:
-          self.obj_layer.append(Dense(d,activation='relu'))
-        self.obj_layer.append(Dense(output_shape,activation='softmax'))
-
-      def call(x):
-        for layer in self.obj_layer:
-            x = layer(x)  
-        return x    
-    return CNN
+   @staticmethod
+   def CNN_Class( kernels = [128,64],sizes=[(2,8),(1,6)],denses=[128,64,42] ,output_shape=11):
       
+    class CNN(Model):
+          def __init__(self):
+            super(CNN,self).__init__()
+            self.obj_layer = []
+            reshap = Reshape((2,128,1))
+            
+            self.obj_layer.append(reshap)
+            for k,s in zip(kernels,sizes):
+                conv = Conv2D(k , kernel_size = s , activation='relu' )
+                max_pool = MaxPooling2D (pool_size=(1,2), strides = 2,data_format ='channels_last')
+                self.obj_layer.append(conv)
+                self.obj_layer.append(max_pool)
+            flatten = Flatten()
+            self.obj_layer.append(flatten)
+            for d in denses:
+              self.obj_layer.append(Dense(d,activation='relu'))
+            self.obj_layer.append(Dense(output_shape,activation='softmax'))
 
-    
-    
-    
-    
-    input_signal = Input(shape = input_shape)
-    reshape = Reshape((2,128,1))(input_signal)
-    conv_1 = Conv2D(128 , kernel_size = (2, 8), activation='relu' )(reshape)
-    max_pool_1 = MaxPooling2D (pool_size=(1,2), strides = 2,data_format ='channels_last')(conv_1)
-    
-    conv_2 = Conv2D(64, kernel_size =(1, 16), activation='relu')(max_pool_1)
-    max_pool_2 = MaxPooling2D (pool_size=(1,2), strides = 2)(conv_2)
-
-    flatten = Flatten()(max_pool_2)
-
-    dense_1 = Dense(128, activation='relu')(flatten)
-    dense_2 = Dense(64, activation='relu')(dense_1)
-    dense_3 = Dense(32, activation='relu')(dense_2)
-    dense_4 = Dense(output_shape, activation='softmax')(dense_3)
-
-    return Model(inputs = input_signal, outputs = dense_4)  
+          def call(self,x):
+              for layer in self.obj_layer:
+                  x = layer(x)  
+              return x
+                               
+    return CNN()
