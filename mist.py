@@ -19,7 +19,6 @@ from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
-
 class MIST(GM):
    def __init__(self,data_path='',k = 500 ,
                       rate = 1/2 ,
@@ -42,6 +41,7 @@ class MIST(GM):
       self.loss = tf.keras.losses.MeanSquaredError()
       self.loss_get_clean = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
       self.metric = self.ber
+      self.loss_fn = self.create_loss_fn()
 
    def build_model(self):
       self.model = self.MIST_model(input_shape=(self.N,1),output_shape=(self.k)) 

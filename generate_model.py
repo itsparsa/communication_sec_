@@ -19,7 +19,6 @@ class Designed_model():
       self.loss_get_clean = None
       self.metric = None 
       self.opt = tf.keras.optimizers.Adam(learning_rate=0.001)
-      self.loss_fn = self.create_loss_fn()
 
    def build_model_and_get_data(self):
      pass
@@ -56,10 +55,9 @@ class Designed_model():
               best_answer_index = np.argsort(diff)
               return [self.X_train[best_answer_index][:limit] , self.y_train[best_answer_index][:limit]] 
    
-   def create_loss_fn(self):
-     temp = self.loss_get_clean
+   def create_loss_fn(self): 
      def loss_fn(labels,logits):
-          return temp(labels,logits)
+        return self.loss_get_clean(labels,logits)
      return loss_fn
 
    def compile_model(self):

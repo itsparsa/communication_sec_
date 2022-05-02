@@ -21,6 +21,7 @@ class aphl(GM):
       self.metric = tf.keras.metrics.CategoricalCrossentropy()
       self.loss = tf.keras.losses.CategoricalCrossentropy()
       self.loss_get_clean = tf.keras.losses.CategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+      self.loss_fn = self.create_loss_fn()
    
    def build_model_and_get_data(self):
       if type(self.X_train) == type(None) : self.set_data(limit=self.num_train_limit) 

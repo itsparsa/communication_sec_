@@ -21,17 +21,20 @@ from tensorflow.keras.layers import Dense , LSTM ,Dropout , Activation ,Reshape
 
 
 class PE(GM):
-   def __init__(self,data_path,train_snr):
+   def __init__(self,data_path,train_snr = np.arange(20, -4, -2) , limit = 10000, execute=False ):
       super(PE, self).__init__(data_path)
       self.name = 'pe'
       self.train_snr = train_snr
+      self.limit = limit 
+      self.execute = execute 
       self.loss = tf.keras.losses.MeanSquaredError()
       self.loss_get_clean = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+      self.loss_fn = self.create_loss_fn()
       self.metric = self.ber
 
 
    def build_model_and_get_data(self):
-      if type(self.X_train) == type(None) : self.set_data() 
+      if type(self.X_train) == type(None) : self.set_data(self.limit, self.execute) 
       self.model = self.RNN_model ( self.X_train[0].shape, 
                                     self.y_train[0].shape[0])
       

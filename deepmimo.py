@@ -33,6 +33,7 @@ class Deep_MIMO(GM):
       self.metric = tf.keras.metrics.MeanAbsoluteError()
       self.loss = tf.keras.losses.MeanSquaredError()
       self.loss_get_clean = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+      self.loss_fn = self.create_loss_fn()
 
    
    def build_model_and_get_data(self):
