@@ -44,8 +44,7 @@ class Deep_MIMO(GM):
       self.compile_model ()
       return self.model
    
-    
-   
+   ###################### data ##########################
    def set_data(self , limit = None) -> None:
 
       dataset_up = self.get_MIMO_data('I1_2p4')
@@ -75,15 +74,10 @@ class Deep_MIMO(GM):
       X = X.astype('float64')
       y = y.astype('float64')
       X_train, X_test, y_train, y_test = train_test_split(
-                                              X, y, test_size=0.33, random_state=42)
+                                              X, y, test_size=0.2, random_state=42)
       
       self.X_train , self.y_train, self.X_test, self.y_test = X_train ,y_train, X_test,y_test
 
-
-   
-   
-
-   
    @staticmethod
    def draw_necessary_inf_in_desired_shape(data):
      #just using one RX antenna data and one TX antenna form all antennas information  
@@ -94,11 +88,7 @@ class Deep_MIMO(GM):
       data = np.transpose(data,axes=(1,0,2))
       return data
    
-   @staticmethod
-   def mods_to_one_hot (mods,inp,encoded):
-     
-    return encoded[mods.index(inp)]
-   
+   ######################### model ######################
    @staticmethod
    def MLP(input_shape,output_shape,
                       num_layers = [2**10,2**12,2**12,64*32*2],
@@ -136,6 +126,36 @@ class Deep_MIMO(GM):
 
 
    @staticmethod
+   def NMSE_loss (y_true , y_pred):
+      return tf.cast(K.mean(K.square(y_pred - y_true)/ (2*K.square(y_true))),tf.float64)
+
+   @staticmethod
+   def MSE_loss (y_true , y_pred):
+      return K.mean(K.square(y_pred-y_true))
+
+   ##################### loss #####################
+   def loss_get_clean_data_sp(self,y_true,y_pred):
+      y_pred = K.reshape(y_pred,shape = (y_pred.shape[0],-1))
+      y_true = K.reshape(y_true,shape = (y_pred.shape[0],-1))
+      return self.loss_get_clean(y_true,y_pred)
+      
+   #overwrite beacasue of the special dimention it has 
+   def get_clean_data(self,limit):
+      y_pred = self.model(self.X_train)
+      y_true = self.y_train
+      diff = self.loss_get_clean_data_sp(y_true,y_pred)
+      diff = diff.numpy()
+      best_answer_index = np.argsort(diff)
+      return [self.X_train[best_answer_index][:limit] , self.y_train[best_answer_index][:limit]]
+
+   def create_loss_fn(self):
+      temp = self.loss_get_clean_data_sp
+      def loss_fn(labels,logits):
+            return temp(labels,logits)
+      return loss_fn
+
+  ###############################  data ################################
+   @staticmethod
    def complex_to_array(dataset):
       shape = dataset.shape
       temp = dataset.reshape([*shape,1])
@@ -143,74 +163,18 @@ class Deep_MIMO(GM):
       array_form_of_complex = np.concatenate((real_num,imag_num),axis=len(shape))
       return array_form_of_complex 
 
-   @staticmethod
-   def transform(x,mean,scale):
-     return (x-mean)/scale
-
-
-   @staticmethod 
-   def mean_data(data):
-    for i in range(len(data.shape)-2):
-        if i == 0 : mean = np.mean(data,axis=0)
-        mean = np.mean(mean,axis=0)   
-    return mean
-    
-   @staticmethod 
-   def scale(data):
-    max = np.max(np.abs(data))
-    return  max 
-
-
    @staticmethod  
    def make_mask (dataset , inp_mask = None , num_set_antenna_M = 8):
-    num_ant ,num_subchannel = dataset.shape[0:2];
-    mask = np.zeros(dataset.shape);
+      num_ant ,num_subchannel = dataset.shape[0:2];
+      mask = np.zeros(dataset.shape);
+      if inp_mask == None : 
+          antena_selected_mask = np.random.choice(num_ant,
+                                                  num_set_antenna_M,
+                                                  replace=False)
+      else: antena_selected_mask = np.where( mask == 1)
+      mask[ antena_selected_mask] =  1
+      return mask
 
-    if inp_mask == None : 
-        antena_selected_mask = np.random.choice(num_ant,
-                                                num_set_antenna_M,
-                                                replace=False)
-        
-    else: antena_selected_mask = np.where( mask == 1)
-    mask[ antena_selected_mask] =  1
-    return mask
-
-   @staticmethod
-   def plot_imshow(*atr):
-    fig = make_subplots(rows=len(atr), cols=2)
-    for j in range(len(atr)):
-        for i in range(2):
-            fig.add_trace(px.imshow(atr[j][:,:,i]).data[0], row=j+1,col=i+1)
-    fig.show()
-
-
-   @staticmethod
-   def NMSE_loss (y_true , y_pred):
-    return tf.cast(K.mean(K.square(y_pred - y_true)/ (2*K.square(y_true))),tf.float64)
-
-   @staticmethod
-   def MSE_loss (y_true , y_pred):
-    return K.mean(K.square(y_pred-y_true))
-
-   def loss_get_clean_data_sp(self,y_true,y_pred):
-              y_pred = K.reshape(y_pred,shape = (y_pred.shape[0],-1))
-              y_true = K.reshape(y_true,shape = (y_pred.shape[0],-1))
-              return self.loss_get_clean(y_true,y_pred)
-      
-   #overwrite beacasue of the special dimention it has 
-   def get_clean_data(self,limit):
-              y_pred = self.model(self.X_train)
-              y_true = self.y_train
-              diff = self.loss_get_clean_data_sp(y_true,y_pred)
-              diff = diff.numpy()
-              best_answer_index = np.argsort(diff)
-              return [self.X_train[best_answer_index][:limit] , self.y_train[best_answer_index][:limit]]
-
-   def create_loss_fn(self):
-     temp = self.loss_get_clean_data_sp
-     def loss_fn(labels,logits):
-          return temp(labels,logits)
-     return loss_fn
 
    def get_MIMO_data(self,scenario ) :
 
@@ -263,3 +227,13 @@ class Deep_MIMO(GM):
               del dataset[i]['user'][del_key]
 
       return dataset
+
+   ##########plot ##################################################################   
+   @staticmethod
+   def plot_imshow(*atr):
+    fig = make_subplots(rows=len(atr), cols=2)
+    for j in range(len(atr)):
+        for i in range(2):
+            fig.add_trace(px.imshow(atr[j][:,:,i]).data[0], row=j+1,col=i+1)
+    fig.show()
+    return fig

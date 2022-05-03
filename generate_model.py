@@ -38,10 +38,12 @@ class Designed_model():
    
    def train_gpu(self,epochs = 200 , batch_size=1024 , get_data_build =True): 
        with tf.device(tf.test.gpu_device_name()):
-          self.train(epochs, batch_size ,get_data_build)
+          return self.train(epochs, batch_size ,get_data_build)
 
    def train(self, epochs =20,batch_size=1024 , get_data_build =True):
+      print("getting data")
       if get_data_build : self.build_model_and_get_data()
+      print("start to fit")
       history = self.model.fit(self.X_train,self.y_train,
                             validation_data=(self.X_test, self.y_test),
                             epochs=epochs, batch_size = batch_size, verbose=2 )
@@ -49,9 +51,11 @@ class Designed_model():
       return history   
 
 
-   def get_clean_data(self,limit):
-              pred = self.model(self.X_train)
-              diff = self.loss_get_clean(self.y_train,pred).numpy()
+   def get_clean_data(self,limit , train_lim = None):
+              if train_lim == None : lim = self.X_train.shape[0]
+              else: lim = train_lim
+              pred = self.model(self.X_train[:lim])
+              diff = self.loss_get_clean(self.y_train[:lim],pred).numpy()
               best_answer_index = np.argsort(diff)
               return [self.X_train[best_answer_index][:limit] , self.y_train[best_answer_index][:limit]] 
    

@@ -19,6 +19,11 @@ from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
+import plotly.express as px
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
+
 class MIST(GM):
    def __init__(self,data_path='',k = 500 ,
                       rate = 1/2 ,
@@ -63,8 +68,7 @@ class MIST(GM):
       self.compile_model()
       history = self.MIST_train_idea()
       return history
-   
-    
+      
    def get_data(self , limit = None ) :
       sigmas = self. get_sigmas(self.SNR_dB_start_Eb,
                                 self.SNR_dB_stop_Eb,
@@ -73,33 +77,6 @@ class MIST(GM):
                                 self.N)
       
       self.generate_uncode_noisy_signal(sigmas)
-
-  
-   
-
-   
-   def generate_uncode_noisy_signal(self,sigmas):
-     
-     self.X_test = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.N,1])
-     self.y_test = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.k])
-     for i in range(len(sigmas)): 
-        for ii in range(0,self.n_samples):
-            #Generating dataword and codeword
-            uncoded = np.random.randint(0,2,size=(self.train_batch,self.k))
-            encoded = np.zeros([uncoded.shape[0], self.N])
-            # memory 2 convolutional encoder used g1, g2
-            for iii in range(0,self.train_batch): 
-                encoded[iii,:] = self.convenc (uncoded[iii,:],self.g1,self.g2,self.k)
-            #Modulate
-            signal = 2*encoded - 1
-            #Adding noise
-            noisy_signal = signal + np.random.normal(0, sigmas[i], size= np.shape(signal))
-            ## train 
-            self.X_test[i,ii,:,:,0] = noisy_signal
-            self.y_test[i,ii,:,:] = uncoded
-
-
-
 
    def MIST_train_idea(self , limit = None ):
      sigmas = self.get_sigmas(self.SNR_dB_start_Eb,
@@ -132,8 +109,27 @@ class MIST(GM):
      self.X_train = self.X_train.reshape(-1,self.N,1)
      self.y_train = self.y_train.reshape(-1,self.k)
      return history
-
    
+   def generate_uncode_noisy_signal(self,sigmas):
+     
+     self.X_test = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.N,1])
+     self.y_test = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.k])
+     for i in range(len(sigmas)): 
+        for ii in range(0,self.n_samples):
+            #Generating dataword and codeword
+            uncoded = np.random.randint(0,2,size=(self.train_batch,self.k))
+            encoded = np.zeros([uncoded.shape[0], self.N])
+            # memory 2 convolutional encoder used g1, g2
+            for iii in range(0,self.train_batch): 
+                encoded[iii,:] = self.convenc (uncoded[iii,:],self.g1,self.g2,self.k)
+            #Modulate
+            signal = 2*encoded - 1
+            #Adding noise
+            noisy_signal = signal + np.random.normal(0, sigmas[i], size= np.shape(signal))
+            ## train 
+            self.X_test[i,ii,:,:,0] = noisy_signal
+            self.y_test[i,ii,:,:] = uncoded
+        
    @staticmethod
    def get_sigmas(SNR_dB_start_Eb,SNR_dB_stop_Eb,SNR_points,k,N):
       
@@ -142,14 +138,12 @@ class MIST(GM):
       SNR_range=np.linspace(SNR_dB_start_Es, SNR_dB_stop_Es, SNR_points)
       return np.sqrt(1/(2*10**(SNR_range/10)))
    
-   
    @staticmethod
    def convenc(data,g1,g2,k):
     enc_msg = np.zeros([2*k])
     enc_msg[0::2] = (np.convolve(data,g1)%2)[0:k]
     enc_msg[1::2] = (np.convolve(data,g2)%2)[0:k]
     return enc_msg   
-
     
    @staticmethod
    def ber(y_true, y_pred):
@@ -168,4 +162,13 @@ class MIST(GM):
       msg_out = Dense(output_shape, activation='sigmoid')(flatten)
 
       return Model(inputs=input_batch,outputs=msg_out)
+
+   @staticmethod
+   def plot_imshow(*atr):
+      fig = make_subplots(rows=len(atr), cols=1)
+      for j in range(len(atr)):
+        for i in range(1):
+          fig.add_trace(px.imshow(atr[j]).data[0], row=j+1,col=1)
+      fig.show()
+      return fig       
   

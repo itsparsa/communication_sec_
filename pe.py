@@ -18,6 +18,9 @@ from tensorflow import keras
 from keras.models import Model
 from tensorflow.keras import layers , Input
 from tensorflow.keras.layers import Dense , LSTM ,Dropout , Activation ,Reshape
+import plotly.express as px
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 
 class PE(GM):
@@ -32,9 +35,8 @@ class PE(GM):
       self.execute = execute 
       self.loss = tf.keras.losses.MeanSquaredError()
       self.loss_get_clean = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
-      self.loss_fn = self.create_loss_fn()
       self.metric = self.ber_function()
-
+      self.loss_fn = self.create_loss_fn()
 
    def build_model_and_get_data(self):
       if type(self.X_train) == type(None) : self.set_data(self.limit, self.execute) 
@@ -107,7 +109,6 @@ class PE(GM):
       self.X_test , self.y_test = self.X_test[:limit] ,self.y_test[:limit]
       self.norm ()
    
-
    def norm(self):
       self._mean = self.mean_data(np.array([self.mean_data(self.X_train),
                                           self.mean_data(self.X_test)]))
@@ -115,7 +116,6 @@ class PE(GM):
                         self.scale(self.X_test))
       for value in [self.X_train,self.X_test]:
         value = self.transform(value,self._mean,self._scale)
-
 
    @staticmethod
    def get_data_by_ratio (train_ratio, snr, status = "train", limit= None,
@@ -154,7 +154,15 @@ class PE(GM):
     output = Dense(output_shape,"sigmoid")(lstm)
     
     return Model(inputs = input_signal, outputs = output)
-
+  
+   @staticmethod
+   def plot_imshow(*atr):
+      fig = make_subplots(rows=len(atr), cols=1)
+      for j in range(len(atr)):
+        for i in range(1):
+          fig.add_trace(px.imshow(atr[j]).data[0], row=j+1,col=1)
+      fig.show()
+      return fig 
 
 
 
