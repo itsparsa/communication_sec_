@@ -8,7 +8,7 @@ just create a shourtcut of https://drive.google.com/drive/folders/1HoC1SENfNZXrQ
 
 
 ## tutorial 
-untitle0.ipynb can demonstrate how to start 
+tutorial.ipynb can demonstrate how to start 
 
 
 <img  src="https://mir-s3-cdn-cf.behance.net/project_modules/max_1200/eeda1b80495429.5ce319b8f09ae.gif" style="width:60vw;height:auto;" >
