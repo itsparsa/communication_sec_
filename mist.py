@@ -40,7 +40,7 @@ class MIST(GM):
       self.name = "mist"
       self.loss = tf.keras.losses.MeanSquaredError()
       self.loss_get_clean = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
-      self.metric = self.ber
+      self.metric = self.ber_function()
       self.loss_fn = self.create_loss_fn()
 
    def build_model(self):
@@ -64,7 +64,7 @@ class MIST(GM):
       history = self.MIST_train_idea()
       return history
    
-   
+    
    def get_data(self , limit = None ) :
       sigmas = self. get_sigmas(self.SNR_dB_start_Eb,
                                 self.SNR_dB_stop_Eb,
@@ -72,8 +72,7 @@ class MIST(GM):
                                 self.k,
                                 self.N)
       
-      X,y = self.generate_uncode_noisy_signal(sigmas)
-      return  [X,y]
+      self.generate_uncode_noisy_signal(sigmas)
 
   
    
@@ -81,10 +80,10 @@ class MIST(GM):
    
    def generate_uncode_noisy_signal(self,sigmas):
      
-     X = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.N,1])
-     y = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.k])
-     for i in range(0,self.n_samples): 
-        for ii in range(0,len(sigmas)):
+     self.X_test = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.N,1])
+     self.y_test = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.k])
+     for i in range(len(sigmas)): 
+        for ii in range(0,self.n_samples):
             #Generating dataword and codeword
             uncoded = np.random.randint(0,2,size=(self.train_batch,self.k))
             encoded = np.zeros([uncoded.shape[0], self.N])
@@ -96,10 +95,8 @@ class MIST(GM):
             #Adding noise
             noisy_signal = signal + np.random.normal(0, sigmas[i], size= np.shape(signal))
             ## train 
-            X[i,ii,:,:,0] = noisy_signal
-            y[i,ii,:,:] = uncoded
-      
-     return [ X.reshape(-1,self.N) , y.reshape(-1,self.k)]
+            self.X_test[i,ii,:,:,0] = noisy_signal
+            self.y_test[i,ii,:,:] = uncoded
 
 
 
@@ -113,8 +110,8 @@ class MIST(GM):
      history = []
      self.X_train = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.N,1])
      self.y_train = np.zeros([len(sigmas),self.n_samples,self.train_batch,self.k])
-     for i in range(0,len(sigmas)):
-       print("SNR  {}/{}".format(i,len(sigmas)))
+     for i in range(len(sigmas)):
+       print("                SNR  {}/{}".format(i,len(sigmas)))
        for ii in range(0,self.n_samples):
             #Generating dataword and codeword
             uncoded = np.random.randint(0,2,size=(self.train_batch,self.k))
@@ -134,11 +131,7 @@ class MIST(GM):
             history.append( self.model.fit(x_train,uncoded, epochs = 1, batch_size = self.train_batch , verbose=2))
      self.X_train = self.X_train.reshape(-1,self.N,1)
      self.y_train = self.y_train.reshape(-1,self.k)
-     return history 
-
-   def compile_model(self, optimizer = 'adam',loss = 'mse' ):            
-      self.model.compile(optimizer=optimizer, loss=loss, metrics=[self.ber]) 
-      return self.model
+     return history
 
    
    @staticmethod
@@ -160,7 +153,7 @@ class MIST(GM):
     
    @staticmethod
    def ber(y_true, y_pred):
-     return  K.mean(K.cast(K.not_equal(y_true, K.round(y_pred)),dtype='float32'))
+     return  K.mean(K.abs(K.cast(K.not_equal(y_true, K.round(y_pred)),dtype='float32')))
    
    @staticmethod
    def MIST_model(input_shape , output_shape):  

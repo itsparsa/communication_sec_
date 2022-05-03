@@ -21,16 +21,19 @@ from tensorflow.keras.layers import Dense , LSTM ,Dropout , Activation ,Reshape
 
 
 class PE(GM):
-   def __init__(self,data_path,train_snr = np.arange(20, -4, -2) , limit = 10000, execute=False ):
+   def __init__(self,data_path, 
+                     limit = 10000,
+                     execute = {"status":False,"limit":10000,"train_ratio":0.8 ,
+                     "train_snr" :np.arange(20, -4, -2)},
+                      ):
       super(PE, self).__init__(data_path)
       self.name = 'pe'
-      self.train_snr = train_snr
       self.limit = limit 
       self.execute = execute 
       self.loss = tf.keras.losses.MeanSquaredError()
       self.loss_get_clean = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
       self.loss_fn = self.create_loss_fn()
-      self.metric = self.ber
+      self.metric = self.ber_function()
 
 
    def build_model_and_get_data(self):
@@ -41,33 +44,25 @@ class PE(GM):
       self.compile_model()
       return 
    
-  
-   
-   def norm(self):
-      self._mean = self.mean_data(np.array([self.mean_data(self.X_train),
-                                          self.mean_data(self.X_test)]))
-      self._scale = max(self.scale(self.X_train),
-                        self.scale(self.X_test))
-      for value in [self.X_train,self.X_test]:
-        value = self.transform(value,self._mean,self._scale)
+   def set_data(self , limit = 100000 ,  execute ={"status":False,
+                                                  "limit":10000,
+                                                  "train_ratio":0.8 ,
+                                                  "train_snr" :np.arange(20, -4, -2)})  -> None:
 
-   
-   def set_data(self , limit = 100000 , execute = False )  -> None:
 
-      train_batch_size = 128
-      train_snr = self.train_snr
-      test_snr = np.arange(0, 6.5, 0.5)
-      train_ratio = np.array([0.4, 0.6, 0.8, 1.0])
-      epoch_setting = np.array([10**1, 10**2, 10**3, 10**4, 10**5])
+      #TODO 
+      #test_snr = np.arange(0, 6.5, 0.5)
+      #train_batch_size = 128
 
-      if  execute : 
+      if  execute["status"] : 
         os.mkdir(self.data_path)
         exec(open(self.data_path + 'deep-neural-network-decoder/RNN/noise/K_16_N_32/"train_data_10^6"/get_data.py'))
 
         ##### execute train ##########
-        X_train, y_train = self.get_data_by_ratio (train_ratio = 0.8 ,
-                                                   snr = train_snr,status = "train",
-                                                   limit= limit,
+        X_train, y_train = self.get_data_by_ratio (train_ratio = execute["train_ratio"] ,
+                                                   snr =  execute["train_snr"],
+                                                   status = "train",
+                                                   limit= execute['limit'],
                                                    data_path = self.data_path + "data/")    
         
         np.savez_compressed( self.data_path + 'train_shape', X_train_shape= np.array(X_train.shape) , y_train_shape = np.array(y_train.shape))
@@ -77,9 +72,10 @@ class PE(GM):
         del X_train, y_train
 
         ##### execute test ##########
-        X_test, y_test = self.get_data_by_ratio (train_ratio = 0.8 ,
-                                                   snr = train_snr,status = "train",
-                                                   limit= int(limit*0.2),
+        X_test, y_test = self.get_data_by_ratio (train_ratio = execute["train_ratio"],
+                                                   snr =  execute["train_snr"],
+                                                   status = execute["limit"],
+                                                   limit= int( execute['limit']*( 1 - execute["train_ratio"])),
                                                    data_path = self.data_path + "data/",
                                                  ) 
 
@@ -107,22 +103,18 @@ class PE(GM):
       # make the data independent of snr 
       self.X_train , self.y_train = self.X_train.reshape(-1,X_train_shape[-1]) , self.y_train.reshape(-1,y_train_shape[-1])
       self.X_test , self.y_test = self.X_test.reshape(-1,X_test_shape[-1]) , self.y_test.reshape(-1,y_test_shape[-1])
+      self.X_train , self.y_train = self.X_train[:limit] ,self.y_train[:limit]
+      self.X_test , self.y_test = self.X_test[:limit] ,self.y_test[:limit]
       self.norm ()
    
 
-
-   @staticmethod
-   def RNN_model (input_shape,output_shape, Dropout_rate = 0.1) :
-  
-    input_signal = Input(shape = input_shape)
-    reshape = Reshape((*input_shape,1))(input_signal)
-    lstm = LSTM(256,
-                dropout = Dropout_rate,
-                kernel_initializer= tf.keras.initializers.GlorotNormal(seed=None))(reshape)
-
-    output = Dense(output_shape,"sigmoid")(lstm)
-    
-    return Model(inputs = input_signal, outputs = output)
+   def norm(self):
+      self._mean = self.mean_data(np.array([self.mean_data(self.X_train),
+                                          self.mean_data(self.X_test)]))
+      self._scale = max(self.scale(self.X_train),
+                        self.scale(self.X_test))
+      for value in [self.X_train,self.X_test]:
+        value = self.transform(value,self._mean,self._scale)
 
 
    @staticmethod
@@ -148,8 +140,22 @@ class PE(GM):
           data = sio.loadmat(data_path+filename)
           x[i,:,:] = data['x_'+status][:limit,:]
           y[i,:,:] = data['y_'+status][:limit,:]
-
       return [x , y]
+
+   @staticmethod
+   def RNN_model (input_shape,output_shape, Dropout_rate = 0.1) :
+  
+    input_signal = Input(shape = input_shape)
+    reshape = Reshape((*input_shape,1))(input_signal)
+    lstm = LSTM(256,
+                dropout = Dropout_rate,
+                kernel_initializer= tf.keras.initializers.GlorotNormal(seed=None))(reshape)
+
+    output = Dense(output_shape,"sigmoid")(lstm)
+    
+    return Model(inputs = input_signal, outputs = output)
+
+
 
 
 

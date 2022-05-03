@@ -3,7 +3,7 @@ from keras.models import Model
 import numpy as np
 import os
 import tensorflow as tf
-import keras.backend as k
+import keras.backend as K
 
 
 class Designed_model():
@@ -105,8 +105,17 @@ class Designed_model():
         new_model.X_test , new_model.y_test = loaded["X_test"].reshape(X_test_shape) , loaded["y_test"].reshape(y_test_shape)
    
    @staticmethod
-   def ber(y_true, y_pred):
-      return  k.mean(k.cast(k.not_equal(y_true, k.round(y_pred)),dtype='float32'))
+   def ber_function():
+    class Ber():
+        def __init__(self):
+          self._memory = None
+        def result(self):
+          return self._memory
+        def __call__(self,y_true,y_pred):
+            self._memory = K.mean(K.cast(K.not_equal(y_true, K.round(y_pred)),dtype='float32'))
+            return self._memory
+    return Ber()
+
 
    def eval(self):
      self.model.evaluate(self.X_test,self.y_test)
@@ -139,7 +148,10 @@ class Designed_model():
       for i in range(1,len(data.shape)-2):
         mean = np.mean(mean,axis=0)   
       return mean
-   
+   @staticmethod
+   def ber(y_true, y_pred):
+     return  K.mean(K.abs(K.cast(K.not_equal(y_true, K.round(y_pred)),dtype='float32')))
+
    @staticmethod 
    def scale(data):
       max = np.max(np.abs(data))
